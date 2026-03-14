@@ -42,7 +42,6 @@ const CRC8_TABLE = [
 
 // Encode a single row of boolean pixels (length PRINTER_WIDTH) into bytes
 function encode1bppRow(rowBool) {
-  logger.debug(`Encoding row of ${rowBool.length} pixels to ${PRINTER_WIDTH_BYTES} bytes`);
   if (rowBool.length !== PRINTER_WIDTH) {
     const error = `Row length must be ${PRINTER_WIDTH}, got ${rowBool.length}`;
     logger.error(error);
@@ -58,12 +57,6 @@ function encode1bppRow(rowBool) {
     }
     rowBytes[byteIndex] = byteVal;
   }
-  
-  // Log first and last few bytes for debugging
-  const firstBytes = Array.from(rowBytes.slice(0, 3)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
-  const lastBytes = Array.from(rowBytes.slice(-3)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
-  logger.debug(`Row encoded: First bytes: ${firstBytes}... Last bytes: ${lastBytes}`);
-  
   return rowBytes;
 }
 
@@ -76,13 +69,14 @@ function prepareImageDataBuffer(imageRowsBool) {
     minBytes: MIN_DATA_BYTES 
   });
   
-  let buffer = new Uint8Array(0);
+  // Pre-allocate to avoid O(n²) re-copying on every row
+  const dataBytes = height * PRINTER_WIDTH_BYTES;
+  const totalBytes = Math.max(dataBytes, MIN_DATA_BYTES);
+  const buffer = new Uint8Array(totalBytes); // zero-filled by default (padding handled)
+  
   for (let y = 0; y < height; y++) {
     const rowBytes = encode1bppRow(imageRowsBool[y]);
-    const newBuf = new Uint8Array(buffer.length + rowBytes.length);
-    newBuf.set(buffer);
-    newBuf.set(rowBytes, buffer.length);
-    buffer = newBuf;
+    buffer.set(rowBytes, y * PRINTER_WIDTH_BYTES);
     
     if (y % 50 === 0 || y === height - 1) {
       logger.debug(`Processed row ${y+1}/${height} (${Math.round((y+1)/height*100)}%)`);
@@ -90,21 +84,11 @@ function prepareImageDataBuffer(imageRowsBool) {
     }
   }
   
-  // Check if padding is needed
-  if (buffer.length < MIN_DATA_BYTES) {
-    logger.info(`Padding buffer to minimum size: ${buffer.length} -> ${MIN_DATA_BYTES} bytes`);
-    const pad = new Uint8Array(MIN_DATA_BYTES - buffer.length);
-    const newBuf = new Uint8Array(buffer.length + pad.length);
-    newBuf.set(buffer);
-    newBuf.set(pad, buffer.length);
-    buffer = newBuf;
-  }
-  
   // Log buffer statistics
   logger.info(`Image buffer prepared`, {
-    totalBytes: buffer.length,
-    dataBytes: height * PRINTER_WIDTH_BYTES,
-    paddingBytes: buffer.length - (height * PRINTER_WIDTH_BYTES)
+    totalBytes,
+    dataBytes,
+    paddingBytes: totalBytes - dataBytes
   });
   
   return buffer;
@@ -503,8 +487,8 @@ export async function printImage(canvas) {
       // Set progress for data transfer phase (50%-90%)
       logger.setProgress(50 + Math.round((pos / buffer.length) * 40));
       
-      // Add small delay to prevent buffer overrun
-      await sleep(15);
+      // Small delay to prevent buffer overrun on the printer
+      await sleep(5);
     }
     
     logger.success('Data transfer complete', {
