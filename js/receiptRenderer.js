@@ -15,9 +15,27 @@ export async function renderReceipt(receiptData, items, fontSize = 18, lineHeigh
     // Generate receipt text lines
     const lines = generateReceiptText(receiptData, items);
     
+    // Try to load the Canary Films logo
+    const logo = await loadLogo('images/logo.png');
+    
     // Render to canvas
-    const canvas = await renderToCanvas(lines, fontSize, lineHeight);
+    const canvas = await renderToCanvas(lines, fontSize, lineHeight, logo);
     return canvas;
+}
+
+/**
+ * Attempts to load the logo image from the given path.
+ * Returns null if the image cannot be loaded.
+ * @param {string} src - Path to the logo image
+ * @returns {Promise<HTMLImageElement|null>}
+ */
+function loadLogo(src) {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = src;
+    });
 }
 
 /**
@@ -77,13 +95,12 @@ function generateReceiptText(data, items) {
     lines.push(centerText(data.businessName));
     const addressLines = data.businessAddress.split('\n');
     addressLines.forEach(line => lines.push(centerText(line)));
-    lines.push(centerText(data.businessPhone));
+    lines.push(centerText(data.businessEmail));
     lines.push('');
     
     // Transaction info - left aligned
     lines.push(`DATE: ${data.dateTime}`);
     lines.push(`ORDER #: ${data.transactionNumber}`);
-    lines.push(`TABLE: ${data.tableNumber}    SERVER: ${data.serverName}`);
     lines.push(divider);
     
     // Items
@@ -103,15 +120,13 @@ function generateReceiptText(data, items) {
     
     lines.push(divider);
     
-    // Calculate totals
+    // Calculate totals (no tax)
     const subtotal = items.reduce((sum, item) => sum + parseFloat(item.price || 0), 0);
-    const tax = subtotal * (data.taxRate / 100);
     const tip = parseFloat(data.tipAmount) || 0;
-    const total = subtotal + tax + tip;
+    const total = subtotal + tip;
     
     // Format totals with exact right alignment
     lines.push(createLabelValueLine("SUBTOTAL:", subtotal));
-    lines.push(createLabelValueLine(`TAX (${data.taxRate}%):`, tax));
     lines.push(createLabelValueLine("TIP:", tip));
     lines.push(divider);
     lines.push(createLabelValueLine("TOTAL:", total));
@@ -137,15 +152,29 @@ function generateReceiptText(data, items) {
  * @param {Array} lines - Text lines
  * @param {number} fontSize - Font size in pixels
  * @param {number} lineHeight - Line height in pixels
+ * @param {HTMLImageElement|null} logo - Optional logo image to render at the top
  * @returns {Promise<HTMLCanvasElement>}
  */
-async function renderToCanvas(lines, fontSize, lineHeight) {
+async function renderToCanvas(lines, fontSize, lineHeight, logo = null) {
     // Make sure font is loaded
     await document.fonts.load(`${fontSize}px DotMatrix`);
     
+    // Calculate logo height if present
+    const logoMargin = 10;
+    let logoHeight = 0;
+    let logoWidth = 0;
+    if (logo) {
+        // Scale logo to fit within printer width, preserving aspect ratio
+        const maxLogoWidth = PRINTER_WIDTH - 20;
+        const scale = Math.min(1, maxLogoWidth / logo.naturalWidth);
+        logoWidth = Math.round(logo.naturalWidth * scale);
+        logoHeight = Math.round(logo.naturalHeight * scale);
+    }
+    
     // Create canvas with exact printer width
     const width = PRINTER_WIDTH;
-    const height = lines.length * lineHeight + 20; // Add more margin to avoid content being cut off
+    const textStartY = logo ? logoHeight + logoMargin * 2 : 10;
+    const height = textStartY + lines.length * lineHeight + 20;
     
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -157,16 +186,19 @@ async function renderToCanvas(lines, fontSize, lineHeight) {
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, width, height);
     
+    // Draw logo at the top, centered
+    if (logo) {
+        const logoX = Math.round((width - logoWidth) / 2);
+        ctx.drawImage(logo, logoX, logoMargin, logoWidth, logoHeight);
+    }
+    
     // Set text properties
     ctx.fillStyle = '#000000';
     ctx.textBaseline = 'top';
     ctx.font = `${fontSize}px DotMatrix`;
     
-    // Calculate character width for alignment
-    const charWidth = ctx.measureText('M').width;
-    
     // Draw each line
-    let y = 10; // Increased top margin
+    let y = textStartY;
     
     for (const line of lines) {
         // Choose alignment based on content
