@@ -1,11 +1,17 @@
-# catprinter
-MXW01 Catprinter website for receipts and images.
+# Canary Films Receipt Printer
+MXW01 Catprinter website configured for Canary Films receipt printing.
 
 Printer technology and protocol inspired by and copied from https://github.com/jeremy46231/catprinter.
 
 **THIS CURRENTLY IS TESTED TO WORK WITH MXW01 CAT PRINTERS *ONLY***
 
-![Receipt Printer](https://github.com/user-attachments/assets/e0378e3f-9ef6-4e89-b04f-526e34bbac1c)
-Receipt Mode
-![Image Printer](https://github.com/user-attachments/assets/e46430e8-c1cd-4e67-b442-5100d659e0c1)
-Image Mode
+## Logo
+To display the Canary Films logo at the top of every receipt, place a file named `logo.png` inside the `images/` directory. The logo will be automatically scaled to fit the printer width (384px) while preserving its aspect ratio. If no logo file is found, receipts will print without a logo.
+
+## Usage
+Open `index.html` in a browser (Chrome/Edge recommended) via a local HTTP server. Web Bluetooth requires a secure context (HTTPS or localhost).
+
+```bash
+python3 -m http.server 8000
+# Then visit http://localhost:8000
+```

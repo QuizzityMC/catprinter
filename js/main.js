@@ -19,12 +19,9 @@ const batteryIcon = document.querySelector('.battery-icon');
 // Business info
 const businessNameInput = document.getElementById('businessName');
 const businessAddressInput = document.getElementById('businessAddress');
-const businessPhoneInput = document.getElementById('businessPhone');
+const businessEmailInput = document.getElementById('businessEmail');
 // Transaction info
-const tableNumberInput = document.getElementById('tableNumber');
-const serverNameInput = document.getElementById('serverName');
 const transactionNumberInput = document.getElementById('transactionNumber');
-const taxRateInput = document.getElementById('taxRate');
 const dateTimeField = document.getElementById('dateTimeField');
 // Items
 const itemsListContainer = document.getElementById('itemsList');
@@ -121,7 +118,7 @@ function initLoggerUI() {
     });
     
     // Add initial log entries
-    logger.info('Printer Tool initialized');
+    logger.info('Canary Films Receipt Printer initialized');
     logger.info('Printer configuration', {
         printerWidth: 384,
         printerWidthBytes: 48,
@@ -695,17 +692,15 @@ function renderItemsList() {
 function calculateTotals() {
     // Calculate subtotal from items
     const subtotal = items.reduce((sum, item) => sum + parseFloat(item.price || 0), 0);
-    const taxRate = parseFloat(taxRateInput.value) || 0;
-    const tax = subtotal * (taxRate / 100);
     const tip = parseFloat(tipAmountInput.value) || 0;
-    const total = subtotal + tax + tip;
+    const total = subtotal + tip;
     const amountPaid = parseFloat(amountPaidInput.value) || 0;
     const change = Math.max(0, amountPaid - total);
     
     // Update change display
     changeAmountDisplay.textContent = `$${change.toFixed(2)}`;
     
-    return { subtotal, tax, tip, total, change };
+    return { subtotal, tip, total, change };
 }
 
 function updateDateTime() {
@@ -721,11 +716,8 @@ function getReceiptData() {
     return {
         businessName: businessNameInput.value,
         businessAddress: businessAddressInput.value,
-        businessPhone: businessPhoneInput.value,
-        tableNumber: tableNumberInput.value,
-        serverName: serverNameInput.value,
+        businessEmail: businessEmailInput.value,
         transactionNumber: transactionNumberInput.value,
-        taxRate: parseFloat(taxRateInput.value) || 0,
         dateTime: currentDateTime,
         tipAmount: parseFloat(tipAmountInput.value) || 0,
         paymentMethod: paymentMethodSelect.value,
@@ -767,19 +759,10 @@ function updateReceiptSummary() {
         <div class="summary-row">
             <span>Items:</span> <span>${items.length}</span>
         </div>
-        <div class="summary-row">
-            <span>Server:</span> <span>${receiptData.serverName}</span>
-        </div>
-        <div class="summary-row">
-            <span>Table:</span> <span>${receiptData.tableNumber}</span>
-        </div>
     </div>
     <div class="summary-section">
         <div class="summary-row">
             <span>Subtotal:</span> <span>$${subtotal.toFixed(2)}</span>
-        </div>
-        <div class="summary-row">
-            <span>Tax:</span> <span>$${tax.toFixed(2)}</span>
         </div>
         <div class="summary-row">
             <span>Tip:</span> <span>$${tip.toFixed(2)}</span>
@@ -804,17 +787,14 @@ function resetForm() {
         items = [];
         
         // Reset to default values
-        businessNameInput.value = 'MY RESTAURANT';
-        businessAddressInput.value = '123 MAIN STREET\nCITY, STATE 12345';
-        businessPhoneInput.value = '(555) 123-4567';
-        tableNumberInput.value = '12';
-        serverNameInput.value = 'ALICE';
+        businessNameInput.value = 'CANARY FILMS';
+        businessAddressInput.value = '7 Somers Crescent\nForrest ACT 2603';
+        businessEmailInput.value = 'tickets@canaryfilms.org';
         transactionNumberInput.value = '1234';
-        taxRateInput.value = '8.25';
         tipAmountInput.value = '0.00';
         paymentMethodSelect.value = 'CREDIT';
         amountPaidInput.value = '0.00';
-        footerMessageInput.value = 'THANK YOU FOR DINING WITH US\nPLEASE COME AGAIN\nWWW.MYRESTAURANT.COM';
+        footerMessageInput.value = 'Thank you for visiting Canary Films. Please visit again.\nhttps://canaryfilms.org\nSupporting Independent Filmmaking';
         
         renderItemsList();
         updateReceiptView();
