@@ -164,8 +164,8 @@ async function renderToCanvas(lines, fontSize, lineHeight, logo = null) {
     let logoHeight = 0;
     let logoWidth = 0;
     if (logo) {
-        // Scale logo to fit within printer width, preserving aspect ratio
-        const maxLogoWidth = PRINTER_WIDTH - 20;
+        // Scale logo to a compact size (≈1/3 of printer width) so it fits neatly on the receipt
+        const maxLogoWidth = Math.round(PRINTER_WIDTH / 3);
         const scale = Math.min(1, maxLogoWidth / logo.naturalWidth);
         logoWidth = Math.round(logo.naturalWidth * scale);
         logoHeight = Math.round(logo.naturalHeight * scale);
